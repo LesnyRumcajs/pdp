@@ -10,6 +10,11 @@ RUN git clone https://github.com/filecoin-project/curio.git /curio \
 FROM ubuntu:24.04
 COPY --from=build-env /curio/cmd/pdptool/pdptool /usr/local/bin/pdptool
 
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+RUN update-ca-certificates
+
 # Ensure the pdptool binary is executable
 RUN /usr/local/bin/pdptool --version
 
