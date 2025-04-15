@@ -1,0 +1,71 @@
+name: Docker publish
+
+# Cancel workflow if there is a new change to the branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      push:
+        description: 'Push to registry'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  build-and-push:
+    name: Build images and push to GHCR
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: |
+            image=moby/buildkit:v0.10.6
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-qemu-action@v3
+
+      # This step yields the following labels
+      # - date+sha, e.g. 2023-01-19-da4692d,
+      # - tag (if pushed).
+      - name: Docker Meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/lesnyrumcajs/pdptool
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value={{date 'YYYY-MM-DD'}}-{{sha}}
+            type=ref,event=tag
+            type=edge
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          file: Dockerfile
+          context: .
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event.inputs.push }}
+          platforms: linux/amd64,linux/arm64
+      - name: List docker images
+        run: docker image ls
