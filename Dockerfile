@@ -5,7 +5,7 @@ ARG TARGETOS
 ARG TARGETARCH
 
 RUN git clone https://github.com/filecoin-project/curio.git /curio \
-    && cd /curio && git checkout feat/pdp && cd cmd/pdptool && GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build .
+    && cd /curio && cd cmd/pdptool && GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build .
 
 FROM ubuntu:24.04
 COPY --from=build-env /curio/cmd/pdptool/pdptool /usr/local/bin/pdptool
